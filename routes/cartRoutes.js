@@ -1,30 +1,43 @@
 const express = require("express");
 const cartRoutes = express.Router();
-const cart = require("./cart");
+const pool = require("../connection/connection");
 
-cartRoutes.get("/cart-items", (req, res) => {
-  res.send(cart);
-});
+function displayCart(req, res) {
+  pool.query("select * from shoppingcart order by id").then(result => {
+    res.send(result.rows);
+  });
+}
+
+cartRoutes.get("/cart-items", displayCart);
 
 cartRoutes.post("/cart-items", (req, res) => {
-  console.log(req.body);
-  cart.push(req.body);
-  res.send(cart);
+  pool
+    .query(
+      "insert into shoppingcart (product, price, quantity) values ($1::text, $2::money, $3::int)",
+      [req.body.product, req.body.price, req.body.quantity]
+    )
+    .then(() => {
+      displayCart(req, res);
+    });
 });
 
 cartRoutes.put("/cart-items/:id", (req, res) => {
-  console.log(req.params.id);
-  res.send(req.params.id);
-  //   const index = cart.findIndex(item => item.id === req.params.id);
-  //   cart.splice(index, 1, req.body);
-  // res.send(cart);
+  pool
+    .query("update shoppingcart set quantity=$1::int where id=$2::int", [
+      req.body.quantity,
+      req.params.id
+    ])
+    .then(() => {
+      displayCart(req, res);
+    });
 });
-//id is a param
+
 cartRoutes.delete("/cart-items/:id", (req, res) => {
-  console.log(req.params.id);
-  //   const index = cart.findIndex(item => item.id === req.params.id);
-  //   cart.splice(index, 1);
-  res.send(cart);
+  pool
+    .query("delete from shoppingcart where id=$1::int", [req.params.id])
+    .then(() => {
+      displayCart(req, res);
+    });
 });
 
 module.exports = cartRoutes;
